@@ -81,9 +81,9 @@ function rowsFor(){
  if(level==='Root') return {next:'Product',rows:ex.map(x=>({KEY:x.BUSINESS,QTY:+x.ACTUAL_QTY||0,TQTY:+x.TARGET_MTD_QTY||0,REV:+x.ACTUAL_REVENUE||0,TREV:+x.TARGET_MTD_REVENUE||0,PQ:+x.PREV_QTY||0,PREVREV:+x.PREV_REVENUE||0,DAY:x.DAY||26,DAYS:x.DAYS_IN_MONTH||30,RA:+x.ACH_PCT||0,RUN:+x.RUNRATE||0,MOM:+x.MOM_PCT||0,GAP:+x.GAP||0,SA:(+x.TARGET_MTD_QTY||0)?(+x.ACTUAL_QTY||0)/(+x.TARGET_MTD_QTY||1)*100:0,SRUN:(+x.ACTUAL_QTY||0)/((+x.DAY||26))*(+x.DAYS_IN_MONTH||30),SMOM:(+x.PREV_QTY||0)?(((+x.ACTUAL_QTY||0)/(+x.PREV_QTY||1))-1)*100:0,SGAP:(+x.ACTUAL_QTY||0)-(+x.TARGET_MTD_QTY||0)}))};
  const b=path[0].key, base=shops.filter(x=>x.BUSINESS===b);
  if(level==='Product') return {next:'Region',rows:aggregate(base.map(x=>({...x,KEY:regionOf(x.AREA)})))};
- if(level==='Region'){const r=path.at(-1).key;return {next:'Area',rows:aggregate(base.filter(x=>regionOf(x.AREA)===r).map(x=>({...x,KEY:x.AREA})))};
- if(level==='Area'){const a=path.at(-1).key;return {next:'Type Shop',rows:aggregate(base.filter(x=>x.AREA===a).map(x=>({...x,KEY:shopTypeOf(x.SHOP_NAME)})))};
- if(level==='Type Shop'){const typ=path.at(-1).key, area=path.at(-2).key;return {next:'Shop Name',rows:aggregate(base.filter(x=>x.AREA===area&&shopTypeOf(x.SHOP_NAME)===typ).map(x=>({...x,KEY:x.SHOP_NAME})))};
+ if(level==='Region'){const r=path.at(-1).key;return {next:'Area',rows:aggregate(base.filter(x=>regionOf(x.AREA)===r).map(x=>({...x,KEY:x.AREA})))}};
+ if(level==='Area'){const a=path.at(-1).key;return {next:'Type Shop',rows:aggregate(base.filter(x=>x.AREA===a).map(x=>({...x,KEY:shopTypeOf(x.SHOP_NAME)})))}};
+ if(level==='Type Shop'){const typ=path.at(-1).key, area=path.at(-2).key;return {next:'Shop Name',rows:aggregate(base.filter(x=>x.AREA===area&&shopTypeOf(x.SHOP_NAME)===typ).map(x=>({...x,KEY:x.SHOP_NAME})))}};
  return {next:null,rows:[]};
 }
 function render(){
