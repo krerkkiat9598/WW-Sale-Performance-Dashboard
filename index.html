@@ -53,9 +53,9 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:7px 8px;b
 <div class="panel"><div class="section-title">1. Executive Overview</div>
 <div id="execKpis" class="kpis"></div>
 <div class="section-title">Performance by Product</div>
-<div id="execCrumb" class="crumb">Overall</div>
+<div class="controls" style="margin-bottom:8px"><button id="execBack" style="border:1px solid #cbd7e6;border-radius:7px;padding:7px 12px;background:#fff;font-weight:800;cursor:pointer">← Back</button><button id="execReset" style="border:1px solid #b9d3ff;border-radius:7px;padding:7px 12px;background:#e8f1ff;color:#0659c7;font-weight:800;cursor:pointer">Overall</button><span id="execLevel" class="badge">Level: Product</span></div><div id="execCrumb" class="crumb">Overall</div>
 <div class="scroll"><table id="execTable"></table></div>
-<div class="note" style="margin-top:8px">คลิกชื่อในตารางเพื่อ Drilldown: Product → Region → Area → Type Shop → Shop Name · Revenue และ Sub แสดงพร้อมกัน</div>
+<div class="note" style="margin-top:8px">คลิกชื่อในตารางเพื่อ Drilldown จริง: Product → Region → Area → Type Shop → Shop Name · ใช้ ← Back เพื่อย้อน 1 ระดับ · Revenue และ Sub แสดงพร้อมกัน</div>
 </div>
 </section>
 
@@ -130,19 +130,20 @@ function aggregate(rows,key){
  rows.forEach(x=>{
   const k=key(x); if(!mp.has(k))mp.set(k,{KEY:k,REV:0,TREV:0,QTY:0,TQTY:0,PREVREV:0,PREVQTY:0,DAY:+x.DAY||26,DAYS:+x.DAYS_IN_MONTH||30});
   const o=mp.get(k);o.REV+=+x.ACTUAL_REVENUE||0;o.TREV+=+x.TARGET_MTD_REVENUE||0;o.QTY+=+x.ACTUAL_QTY||0;
-  o.TQTY+=+x.TARGET_QTY||0;o.PREVREV+=+x.PREV_REVENUE||0;o.PREVQTY+=+x.PREV_QTY||0;
+  const day=+x.DAY||26, days=+x.DAYS_IN_MONTH||30; o.TQTY+=(+x.TARGET_QTY||0)*day/days;
+  o.PREVREV+=+x.PREV_REVENUE||0;o.PREVQTY+=+x.PREV_QTY||0;
  });
  mp.forEach(o=>{
    o.RA=o.TREV?o.REV/o.TREV*100:0;o.GAP=o.REV-o.TREV;
    o.SA=o.TQTY?o.QTY/o.TQTY*100:0;o.SGAP=o.QTY-o.TQTY;
-   o.RUN=o.DAY?o.REV/o.DAY*o.DAYS:o.REV;
-   o.MOM=o.PREVREV?((o.REV/o.PREVREV)-1)*100:null;
+   o.RUN=o.DAY?o.REV/o.DAY*o.DAYS:o.REV;o.SRUN=o.DAY?o.QTY/o.DAY*o.DAYS:o.QTY;
+   o.MOM=o.PREVREV?((o.REV/o.PREVREV)-1)*100:null;o.SMOM=o.PREVQTY?((o.QTY/o.PREVQTY)-1)*100:null;
  });
  return [...mp.values()];
 }
 function renderExecTable(){
  const p=window.execPath; let rows, title;
- if(!p.length){rows=exec.map(x=>({KEY:x.BUSINESS,REV:x.ACTUAL_REVENUE,TREV:x.TARGET_MTD_REVENUE,QTY:x.ACTUAL_QTY,TQTY:x.TARGET_MTD_QTY,RA:x.ACH_PCT,RUN:x.RUNRATE,MOM:x.MOM_PCT,GAP:x.GAP,SA:x.TARGET_MTD_QTY?x.ACTUAL_QTY/x.TARGET_MTD_QTY*100:0,SGAP:x.ACTUAL_QTY-x.TARGET_MTD_QTY}));title='Product'}
+ if(!p.length){rows=exec.map(x=>({KEY:x.BUSINESS,REV:x.ACTUAL_REVENUE,TREV:x.TARGET_MTD_REVENUE,QTY:x.ACTUAL_QTY,TQTY:x.TARGET_MTD_QTY,RA:x.ACH_PCT,RUN:x.RUNRATE,MOM:x.MOM_PCT,GAP:x.GAP,SA:x.TARGET_MTD_QTY?x.ACTUAL_QTY/x.TARGET_MTD_QTY*100:0,SRUN:x.ACTUAL_QTY/x.DAY*x.DAYS_IN_MONTH,SMOM:x.PREV_QTY?((x.ACTUAL_QTY/x.PREV_QTY)-1)*100:null,SGAP:x.ACTUAL_QTY-x.TARGET_MTD_QTY}));title='Product'}
  else {
   const b=p[0].key; let base=area.filter(x=>x.BUSINESS===b); const lvl=p[p.length-1].level;
   if(lvl==='Product'){rows=aggregate(base,x=>regionOf(x.AREA));title='Region'}
@@ -151,14 +152,15 @@ function renderExecTable(){
   else {const ar=p[p.length-2].key, typ=p[p.length-1].key;rows=aggregate(base.filter(x=>x.AREA===ar&&shopType(x.SHOP_NAME)===typ),x=>x.SHOP_NAME);title='Shop Name'}
  }
  const crumb=['Overall',...p.map(x=>x.key)].join(' › ');document.getElementById('execCrumb').innerHTML=esc(crumb);
+ document.getElementById('execLevel').textContent='Level: '+title;document.getElementById('execBack').disabled=!p.length;document.getElementById('execBack').style.opacity=p.length?'1':'.45';
  let h=`<thead><tr><th rowspan="2">${title}</th><th colspan="6" class="grouphead">REVENUE</th><th colspan="6" class="grouphead">SUB</th></tr><tr><th>Actual MTD</th><th>Target MTD</th><th>%Ach</th><th>Runrate</th><th>MoM</th><th>Gap</th><th>Actual MTD</th><th>Target MTD</th><th>%Ach</th><th>Runrate</th><th>MoM</th><th>Gap</th></tr></thead><tbody>`;
  rows.sort((a,b)=>b.REV-a.REV).forEach(x=>{
-  let click='';
-  if(title!=='Shop Name') click=`class="click" onclick="execDrill('${esc(String(x.KEY)).replace(/'/g,"\\'")}')"`;
-  h+=`<tr><td ${click}>${esc(x.KEY)}</td><td>${money(x.REV)}</td><td>${money(x.TREV)}</td><td class="${cls(x.RA-100)}">${pct(x.RA)}</td><td>${money(x.RUN)}</td><td class="${cls(x.MOM)}">${pct(x.MOM)}</td><td class="${cls(x.GAP)}">${money(x.GAP)}</td><td>${fmt(x.QTY)}</td><td>${fmt(x.TQTY)}</td><td class="${cls(x.SA-100)}">${pct(x.SA)}</td><td>${fmt(x.QTY)}</td><td>${pct(x.MOM)}</td><td class="${cls(x.SGAP)}">${fmt(x.SGAP)}</td></tr>`;
+  let click='';if(title!=='Shop Name') click=`class="click" onclick="execDrill('${esc(String(x.KEY)).replace(/'/g,"\'")}')"`;
+  h+=`<tr><td ${click}>${esc(x.KEY)}</td><td>${money(x.REV)}</td><td>${money(x.TREV)}</td><td class="${cls(x.RA-100)}">${pct(x.RA)}</td><td>${money(x.RUN)}</td><td class="${cls(x.MOM)}">${pct(x.MOM)}</td><td class="${cls(x.GAP)}">${money(x.GAP)}</td><td>${fmt(x.QTY)}</td><td>${fmt(x.TQTY)}</td><td class="${cls(x.SA-100)}">${pct(x.SA)}</td><td>${fmt(x.SRUN)}</td><td class="${cls(x.SMOM)}">${pct(x.SMOM)}</td><td class="${cls(x.SGAP)}">${fmt(x.SGAP)}</td></tr>`;
  });
  document.getElementById('execTable').innerHTML=h+'</tbody>';
 }
+
 window.execDrill=function(k){
  const p=window.execPath;
  if(!p.length)window.execPath=[{level:'Product',key:k}];
@@ -168,6 +170,8 @@ window.execDrill=function(k){
  else return;
  renderExecTable();
 }
+document.getElementById('execBack').onclick=()=>{if(window.execPath.length){window.execPath.pop();renderExecTable()}};
+document.getElementById('execReset').onclick=()=>{window.execPath=[];renderExecTable()};
 document.getElementById('execCrumb').onclick=()=>{window.execPath=[];renderExecTable()};
 
 function setupArea(){
