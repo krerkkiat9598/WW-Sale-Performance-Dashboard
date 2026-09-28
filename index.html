@@ -9,16 +9,29 @@ main{padding:14px 26px 35px}.section{background:#fff;border:1px solid #dfe5ee;bo
 .notice{background:#eef5ff;border:1px solid #cfe0ff;border-radius:9px;padding:9px 11px;margin-bottom:10px}.cards{display:grid;grid-template-columns:repeat(8,1fr);gap:9px}.card{background:#fff;border:1px solid #e1e6ee;border-radius:10px;padding:10px}.lab{font-size:10px;color:#667085;font-weight:800}.val{font-size:20px;font-weight:900;margin-top:4px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.small{font-size:11px;color:#667085}.up{color:#07883d;font-weight:800}.down{color:#d71920;font-weight:800}
 .search,select{width:100%;padding:8px 9px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f7f9fc;font-weight:800;text-align:left;position:sticky;top:43px;z-index:2}th,td{padding:7px 8px;border-bottom:1px solid #e7ecf2;white-space:nowrap}td.num{text-align:right}.scroll{overflow:auto;max-height:480px;border:1px solid #e4e9f0;border-radius:8px}.title{font-weight:900;margin-bottom:7px}.pill{display:inline-block;background:#eef3f8;border-radius:99px;padding:3px 7px;font-size:10px;font-weight:800}
+.viewby{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}.viewby button{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px 13px;font-weight:800;cursor:pointer}.viewby button.active{background:#e7f0ff;border-color:#1f5fbf;color:#1457b8}
 @media(max-width:1100px){.cards{grid-template-columns:repeat(4,1fr)}.grid3{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}@media(max-width:650px){.cards{grid-template-columns:repeat(2,1fr)}header,.nav,main{padding-left:12px;padding-right:12px}}
 </style></head><body>
 <header><div class="wrap"><h1>W&W SALE PERFORMANCE — EXECUTIVE DASHBOARD</h1><div class="sub">MTD • Target • %Ach • Runrate • MoM • WOW ทุก Product • Area • Shop • Model • SKU • Stock</div><div class="sub">Latest Data As-of: <b id="asof"></b></div></div></header>
 <div class="nav"><div class="wrap"><a href="#exec">Executive</a><a href="#wow">WOW</a><a href="#area">Area / Shop</a><a href="#detail">Model / SKU</a><a href="#stock">Stock</a></div></div>
 <main class="wrap">
 
-<section id="exec" class="section"><h2>1. Executive Overview</h2><div class="cards" id="execCards"></div><h3>Performance by Product</h3><div class="scroll"><table id="execTable"></table></div></section>
+<section id="exec" class="section"><h2>1. Executive Overview</h2>
+<div class="grid2">
+<div class="card"><div class="title">Product</div><select id="execProduct"></select></div>
+<div class="card"><div class="title">View By</div><div class="viewby" id="viewBy">
+<button data-view="Overall" class="active">Overall</button>
+<button data-view="Region">Region</button>
+<button data-view="Area">Area</button>
+<button data-view="Type Shop">Type Shop</button>
+<button data-view="Shop Name">Shop Name</button>
+</div></div>
+</div>
+<div class="cards" id="execCards" style="margin-top:10px"></div>
+<h3>Performance</h3><div class="scroll"><table id="execTable"></table></div></section>
 
 <section id="wow" class="section"><h2>2. WOW Performance — Product → Area → Shop → Model → SKU</h2>
-<div class="notice"><b>WOW หลัก:</b> เลือก Product แล้วดูได้ทันทีว่า Area ไหนทำดี/ลด, Shop ไหนทำดี/ลด, Model ไหนโต/ลด และ SKU ไหนโต/ลด พร้อม Current / Previous / WOW และ Stock</div>
+<div class="notice"><b>WOW:</b> เลือก Product แล้วดู Area / Shop / Model / SKU พร้อม Current, Previous, WoW และ Stock</div>
 <div class="cards" id="wowCards"></div>
 <div class="grid3">
 <div class="card"><div class="title">Product</div><select id="product"></select></div>
@@ -38,8 +51,7 @@ main{padding:14px 26px 35px}.section{background:#fff;border:1px solid #dfe5ee;bo
 <div class="scroll"><table id="detailTable"></table></div></section>
 
 <section id="stock" class="section"><h2>5. Stock Health</h2><div class="cards" id="stockCards"></div><div class="scroll"><table id="stockTable"></table></div></section>
-
-<div class="small" style="text-align:center;padding:8px">W&W Sale Performance • Single Page Executive View • Source: WW_Sale_Performance_Data_Model_V2_MTD_WOW</div>
+<div class="small" style="text-align:center;padding:8px">W&W Sale Performance • Single Page Executive View</div>
 </main>
 <script src="data.js"></script><script>
 const D=window.D;
@@ -49,28 +61,63 @@ const cls=n=>Number(n)>0?'up':Number(n)<0?'down':'';
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 document.getElementById('asof').textContent=D.meta.asof;
 
+const models=D.MODEL_MTD, products=[...new Set(models.map(x=>x.BUSINESS))];
+const ex=D.EXECUTIVE_MTD;
+document.getElementById('execProduct').innerHTML='<option value="ALL">All Product</option>'+products.map(x=>'<option>'+esc(x)+'</option>').join('');
 function table(id,heads,rows){document.getElementById(id).innerHTML='<thead><tr>'+heads.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('')+'</tbody>'}
 
-const ex=D.exec.reduce((a,x)=>a+x.ACTUAL_REVENUE,0), et=D.exec.reduce((a,x)=>a+x.TARGET_MTD_REVENUE,0);
-const eq=D.exec.reduce((a,x)=>a+x.ACTUAL_QTY,0),eTQ=D.exec.reduce((a,x)=>a+x.TARGET_MTD_QTY,0);
-const rr=D.exec.reduce((a,x)=>a+x.RUNRATE,0);
-document.getElementById('execCards').innerHTML=[
-['Actual MTD Revenue',fmt(ex)],['Target MTD Revenue',fmt(et)],['%Ach',pct(ex/et*100)],['Runrate',fmt(rr)],
-['Runrate vs Target',pct(rr/et*100)],['Actual MTD Qty',fmt(eq)],['Target MTD Qty',fmt(eTQ)],['Products',D.exec.length]
-].map(x=>'<div class="card"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div></div>').join('');
-table('execTable',['Product','Actual MTD','Target MTD','%Ach','Runrate','MoM','Gap','As-of'],
-D.exec.map(x=>[esc(x.BUSINESS),fmt(x.ACTUAL_REVENUE),fmt(x.TARGET_MTD_REVENUE),'<span class="'+cls(x.ACH_PCT-100)+'">'+pct(x.ACH_PCT)+'</span>',fmt(x.RUNRATE),'<span class="'+cls(x.MOM_PCT)+'">'+pct(x.MOM_PCT)+'</span>',fmt(x.GAP),esc(x.ASOF)]))
+let currentView='Overall';
+function execFiltered(){
+ const p=document.getElementById('execProduct').value;
+ return p==='ALL'?models:models.filter(x=>x.BUSINESS===p);
+}
+function getGroupKey(x,view){
+ if(view==='Region'){
+   const a=String(x.AREA||'');
+   return /^BMA\s/i.test(a)?'BMA':'UPC';
+ }
+ if(view==='Area') return String(x.AREA||'Unknown');
+ if(view==='Type Shop'){
+   const n=String(x.SHOP_NAME||'').toLowerCase();
+   if(n.includes('partner plus')) return 'True Partner Plus';
+   if(n.includes('ten ten')) return 'Ten Ten Shop';
+   if(n.includes('kiosk')) return 'Kiosk';
+   if(n.includes('true shop') || n.includes('true move shop')) return 'True Shop';
+   return 'Other';
+ }
+ if(view==='Shop Name') return String(x.SHOP_NAME||'Unknown');
+ return null;
+}
+function renderExecutive(){
+ const r=execFiltered();
+ let groups;
+ if(currentView==='Overall'){
+   groups=[{KEY:document.getElementById('execProduct').value==='ALL'?'Overall':document.getElementById('execProduct').value, ACT: r.reduce((s,x)=>s+Number(x.ACTUAL_REVENUE||0),0), TAR:r.reduce((s,x)=>s+Number(x.TARGET_MTD_SHOP_BUSINESS||0),0), QTY:r.reduce((s,x)=>s+Number(x.ACTUAL_QTY||0),0), MOM:0, RR:r.reduce((s,x)=>s+Number(x.RUNRATE||0),0)}];
+ } else {
+   const mp=new Map();
+   r.forEach(x=>{const k=getGroupKey(x,currentView); if(!mp.has(k))mp.set(k,{KEY:k,ACT:0,TAR:0,QTY:0,RR:0,PREV:0});
+     const a=mp.get(k);a.ACT+=Number(x.ACTUAL_REVENUE||0);a.TAR+=Number(x.TARGET_MTD_SHOP_BUSINESS||0);a.QTY+=Number(x.ACTUAL_QTY||0);a.RR+=Number(x.RUNRATE||0);a.PREV+=Number(x.PREV_REVENUE||0)});
+   groups=[...mp.values()].map(a=>({...a,MOM:a.PREV?((a.ACT/a.PREV)-1)*100:0})).sort((a,b)=>b.ACT-a.ACT);
+ }
+ const totalAct=groups.reduce((s,x)=>s+x.ACT,0), totalTar=groups.reduce((s,x)=>s+x.TAR,0), totalQty=groups.reduce((s,x)=>s+x.QTY,0), totalRR=groups.reduce((s,x)=>s+x.RR,0);
+ document.getElementById('execCards').innerHTML=[
+ ['Actual MTD Revenue',fmt(totalAct)],['Target MTD Revenue',fmt(totalTar)],['%Ach',pct(totalAct/totalTar*100)],['Runrate',fmt(totalRR)],
+ ['Runrate vs Target',pct(totalRR/totalTar*100)],['Actual MTD Qty',fmt(totalQty)],['View By',currentView],['Rows',fmt(groups.length)]
+ ].map(x=>'<div class="card"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div></div>').join('');
+ const first=currentView==='Overall'?'View':currentView;
+ table('execTable',[first,'Actual MTD','Target MTD','%Ach','Runrate','MoM','Gap'],
+ groups.map(x=>[esc(x.KEY),fmt(x.ACT),fmt(x.TAR),'<span class="'+cls(x.ACT/x.TAR*100-100)+'">'+pct(x.ACT/x.TAR*100)+'</span>',fmt(x.RR),'<span class="'+cls(x.MOM)+'">'+pct(x.MOM)+'</span>',fmt(x.ACT-x.TAR)]));
+}
+document.getElementById('execProduct').addEventListener('change',renderExecutive);
+document.querySelectorAll('#viewBy button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#viewBy button').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;renderExecutive()}));
+renderExecutive();
 
-const models=D.models, products=[...new Set(models.map(x=>x.BUSINESS))];
 function setupSelect(id){document.getElementById(id).innerHTML=products.map(x=>'<option>'+esc(x)+'</option>').join('')}
-setupSelect('product');setupSelect('areaProduct');setupSelect('detailSearch');
+setupSelect('product');setupSelect('areaProduct');
 
 function getRows(product,level,q=''){
- let r=models.filter(x=>x.BUSINESS===product);
- if(q)r=r.filter(x=>[x.BUSINESS,x.AREA,x.SHOP_NAME,x.BRAND,x.MODEL,x.PRODUCT_CODE].join(' ').toLowerCase().includes(q));
- const m=new Map();
- r.forEach(x=>{const k=String(x[level]??'');if(!m.has(k))m.set(k,{KEY:k,CQ:0,PQ:0,CR:0,PR:0,ST:0,TM:0});const a=m.get(k);
- a.CQ+=Number(x.ACTUAL_QTY||0);a.PQ+=Number(x.PREV_QTY||0);a.CR+=Number(x.ACTUAL_REVENUE||0);a.PR+=Number(x.PREV_REVENUE||0);a.ST+=Number(x.STOCK||0);a.TM+=Number(x.TARGET_MTD_SHOP_BUSINESS||0)});
+ let r=models.filter(x=>x.BUSINESS===product); if(q)r=r.filter(x=>[x.BUSINESS,x.AREA,x.SHOP_NAME,x.BRAND,x.MODEL,x.PRODUCT_CODE].join(' ').toLowerCase().includes(q));
+ const m=new Map();r.forEach(x=>{const k=String(x[level]??'');if(!m.has(k))m.set(k,{KEY:k,CQ:0,PQ:0,CR:0,PR:0,ST:0,TM:0});const a=m.get(k);a.CQ+=Number(x.ACTUAL_QTY||0);a.PQ+=Number(x.PREV_QTY||0);a.CR+=Number(x.ACTUAL_REVENUE||0);a.PR+=Number(x.PREV_REVENUE||0);a.ST+=Number(x.STOCK||0);a.TM+=Number(x.TARGET_MTD_SHOP_BUSINESS||0)});
  return [...m.values()].map(a=>({...a,WQ:a.PQ?((a.CQ/a.PQ)-1)*100:(a.CQ?100:0),WR:a.PR?((a.CR/a.PR)-1)*100:(a.CR?100:0),ACH:a.TM?a.CR/a.TM*100:0}));
 }
 function renderWOW(){
@@ -78,31 +125,19 @@ function renderWOW(){
  let r=getRows(p,l,q);if(d==='GROWTH')r=r.filter(x=>x.WR>0);if(d==='DECLINE')r=r.filter(x=>x.WR<0);r.sort((a,b)=>b.WR-a.WR);
  const all=getRows(p,l),sum=k=>all.reduce((s,x)=>s+x[k],0),cq=sum('CQ'),pq=sum('PQ'),cr=sum('CR'),pr=sum('PR'),chg=(a,b)=>b?((a/b)-1)*100:(a?100:0);
  document.getElementById('wowCards').innerHTML=[['Current Qty',fmt(cq)],['Previous Qty',fmt(pq)],['WoW Qty',pct(chg(cq,pq))],['Current Revenue',fmt(cr)],['Previous Revenue',fmt(pr)],['WoW Revenue',pct(chg(cr,pr))],['Positive',all.filter(x=>x.WR>0).length],['Negative',all.filter(x=>x.WR<0).length]].map(x=>'<div class="card"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div></div>').join('');
- const gr=[...all].filter(x=>x.PR>0).sort((a,b)=>b.WR-a.WR).slice(0,5),de=[...all].filter(x=>x.PR>0).sort((a,b)=>a.WR-b.WR).slice(0,5);
- const mini=a=>a.map(x=>'<div style="padding:5px 0;border-bottom:1px solid #edf0f4"><b>'+esc(x.KEY)+'</b> <span class="'+cls(x.WR)+'">'+pct(x.WR)+'</span><br><span class="small">Revenue '+fmt(x.CR)+' vs '+fmt(x.PR)+'</span></div>').join('');
+ const gr=[...all].filter(x=>x.PR>0).sort((a,b)=>b.WR-a.WR).slice(0,5),de=[...all].filter(x=>x.PR>0).sort((a,b)=>a.WR-b.WR).slice(0,5),mini=a=>a.map(x=>'<div style="padding:5px 0;border-bottom:1px solid #edf0f4"><b>'+esc(x.KEY)+'</b> <span class="'+cls(x.WR)+'">'+pct(x.WR)+'</span><br><span class="small">Revenue '+fmt(x.CR)+' vs '+fmt(x.PR)+'</span></div>').join('');
  document.getElementById('growth').innerHTML=mini(gr)||'—';document.getElementById('decline').innerHTML=mini(de)||'—';
- table('wowTable',['Rank',l,'Current Qty','Previous Qty','WoW Qty','Current Revenue','Previous Revenue','WoW Revenue','Stock'],
- r.slice(0,3000).map((x,i)=>[i+1,esc(x.KEY),fmt(x.CQ),fmt(x.PQ),'<span class="'+cls(x.WQ)+'">'+pct(x.WQ)+'</span>',fmt(x.CR),fmt(x.PR),'<span class="'+cls(x.WR)+'">'+pct(x.WR)+'</span>',fmt(x.ST)]))
+ table('wowTable',['Rank',l,'Current Qty','Previous Qty','WoW Qty','Current Revenue','Previous Revenue','WoW Revenue','Stock'],r.slice(0,3000).map((x,i)=>[i+1,esc(x.KEY),fmt(x.CQ),fmt(x.PQ),'<span class="'+cls(x.WQ)+'">'+pct(x.WQ)+'</span>',fmt(x.CR),fmt(x.PR),'<span class="'+cls(x.WR)+'">'+pct(x.WR)+'</span>',fmt(x.ST)]))
 }
 ['product','level','direction'].forEach(id=>document.getElementById(id).addEventListener('change',renderWOW));document.getElementById('wowSearch').addEventListener('input',renderWOW);renderWOW();
 
-function renderArea(){
- const p=document.getElementById('areaProduct').value,l=document.getElementById('areaLevel').value,r=getRows(p,l).sort((a,b)=>b.CR-a.CR);
- table('areaTable',[l,'Actual Revenue','Target','%Ach','Actual Qty','WoW Revenue','Stock'],
- r.slice(0,1000).map(x=>[esc(x.KEY),fmt(x.CR),fmt(x.TM),'<span class="'+cls(x.ACH-100)+'">'+pct(x.ACH)+'</span>',fmt(x.CQ),'<span class="'+cls(x.WR)+'">'+pct(x.WR)+'</span>',fmt(x.ST)]))
-}
+function renderArea(){const p=document.getElementById('areaProduct').value,l=document.getElementById('areaLevel').value,r=getRows(p,l).sort((a,b)=>b.CR-a.CR);table('areaTable',[l,'Actual Revenue','Target','%Ach','Actual Qty','WoW Revenue','Stock'],r.slice(0,1000).map(x=>[esc(x.KEY),fmt(x.CR),fmt(x.TM),'<span class="'+cls(x.ACH-100)+'">'+pct(x.ACH)+'</span>',fmt(x.CQ),'<span class="'+cls(x.WR)+'">'+pct(x.WR)+'</span>',fmt(x.ST)]))}
 document.getElementById('areaProduct').addEventListener('change',renderArea);document.getElementById('areaLevel').addEventListener('change',renderArea);renderArea();
 
-function renderDetail(){
- const q=document.getElementById('detailSearch').value.toLowerCase().trim();
- let r=models.filter(x=>!q||[x.BUSINESS,x.AREA,x.SHOP_NAME,x.BRAND,x.MODEL,x.PRODUCT_CODE].join(' ').toLowerCase().includes(q));
- r.sort((a,b)=>Number(b.ACTUAL_REVENUE)-Number(a.ACTUAL_REVENUE));
- table('detailTable',['Product','Area','Shop','Brand','Model','SKU','MTD Revenue','Target','%Ach','MoM','WOW Week','Stock'],
- r.slice(0,4000).map(x=>[esc(x.BUSINESS),esc(x.AREA),esc(x.SHOP_NAME),esc(x.BRAND),esc(x.MODEL),esc(x.PRODUCT_CODE),fmt(x.ACTUAL_REVENUE),fmt(x.TARGET_MTD_SHOP_BUSINESS),'<span class="'+cls(x.ACTUAL_REVENUE/x.TARGET_MTD_SHOP_BUSINESS*100-100)+'">'+pct(x.ACTUAL_REVENUE/x.TARGET_MTD_SHOP_BUSINESS*100)+'</span>','<span class="'+cls(x.MOM_PCT)+'">'+pct(x.MOM_PCT)+'</span>',esc(x.WOW_WEEK),fmt(x.STOCK)]))
-}
+function renderDetail(){const q=document.getElementById('detailSearch').value.toLowerCase().trim();let r=models.filter(x=>!q||[x.BUSINESS,x.AREA,x.SHOP_NAME,x.BRAND,x.MODEL,x.PRODUCT_CODE].join(' ').toLowerCase().includes(q));r.sort((a,b)=>Number(b.ACTUAL_REVENUE)-Number(a.ACTUAL_REVENUE));table('detailTable',['Product','Area','Shop','Brand','Model','SKU','MTD Revenue','Target','%Ach','MoM','WOW Week','Stock'],r.slice(0,4000).map(x=>[esc(x.BUSINESS),esc(x.AREA),esc(x.SHOP_NAME),esc(x.BRAND),esc(x.MODEL),esc(x.PRODUCT_CODE),fmt(x.ACTUAL_REVENUE),fmt(x.TARGET_MTD_SHOP_BUSINESS),'<span class="'+cls(x.ACTUAL_REVENUE/x.TARGET_MTD_SHOP_BUSINESS*100-100)+'">'+pct(x.ACTUAL_REVENUE/x.TARGET_MTD_SHOP_BUSINESS*100)+'</span>','<span class="'+cls(x.MOM_PCT)+'">'+pct(x.MOM_PCT)+'</span>',esc(x.WOW_WEEK),fmt(x.STOCK)]))}
 document.getElementById('detailSearch').addEventListener('input',renderDetail);renderDetail();
 
-const totalStock=D.stock.reduce((s,x)=>s+Number(x.STOCK||0),0),zero=D.stock.filter(x=>Number(x.STOCK||0)<=0).length,low=D.stock.filter(x=>Number(x.STOCK||0)>0&&Number(x.STOCK||0)<=10).length;
-document.getElementById('stockCards').innerHTML=[['Net Stock',fmt(totalStock)],['SKU',fmt(D.stock.length)],['Zero Stock',fmt(zero)],['Low Stock ≤10',fmt(low)]].map(x=>'<div class="card"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div></div>').join('');
-table('stockTable',['Brand','Model','SKU','Stock'],D.stock.slice().sort((a,b)=>Number(a.STOCK)-Number(b.STOCK)).slice(0,3000).map(x=>[esc(x.Brand),esc(x.Model),esc(x.PRODUCT_CODE),fmt(x.STOCK)]));
+const totalStock=D.STOCK_MODEL.reduce((s,x)=>s+Number(x.STOCK||0),0),zero=D.STOCK_MODEL.filter(x=>Number(x.STOCK||0)<=0).length,low=D.STOCK_MODEL.filter(x=>Number(x.STOCK||0)>0&&Number(x.STOCK||0)<=10).length;
+document.getElementById('stockCards').innerHTML=[['Net Stock',fmt(totalStock)],['SKU',fmt(D.STOCK_MODEL.length)],['Zero Stock',fmt(zero)],['Low Stock ≤10',fmt(low)]].map(x=>'<div class="card"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div></div>').join('');
+table('stockTable',['Brand','Model','SKU','Stock'],D.STOCK_MODEL.slice().sort((a,b)=>Number(a.STOCK)-Number(b.STOCK)).slice(0,3000).map(x=>[esc(x.Brand),esc(x.Model),esc(x.PRODUCT_CODE),fmt(x.STOCK)]));
 </script></body></html>
